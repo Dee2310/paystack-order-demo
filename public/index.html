@@ -3,49 +3,84 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Paystack Automated Order & Receipt Demo</title>
+  <title>Paystack Automated Order & Receipt Portal</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-6">
-  <div class="max-w-5xl mx-auto space-y-8">
-    <div class="border-b border-slate-800 pb-4">
-      <h1 class="text-2xl font-bold text-emerald-400">Automated Paystack Order & Receipt System</h1>
-      <p class="text-sm text-slate-400">Live Webhook Verification + Instant WhatsApp Receipt Dispatch</p>
-    </div>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8">
+  <div class="max-w-5xl mx-auto">
+    <header class="mb-8 border-b border-slate-800 pb-4">
+      <h1 class="text-2xl md:text-3xl font-bold text-emerald-400">Automated Paystack Order & Receipt System</h1>
+      <p class="text-slate-400 text-sm mt-1">Live Webhook Verification + Instant WhatsApp Receipt Dispatch</p>
+    </header>
 
-    <div class="grid md:grid-cols-3 gap-6">
-      <!-- New Order Checkout Simulator -->
-      <div class="bg-slate-900 p-5 rounded-xl border border-slate-800 space-y-4">
-        <h2 class="font-semibold text-lg">1. Customer Checkout Link</h2>
+    <div class="grid md:grid-cols-5 gap-6">
+      <!-- Left: Create Order & Generate Checkout Link -->
+      <div class="md:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5 h-fit">
+        <h2 class="text-lg font-semibold mb-4">1. Customer Checkout Link</h2>
         <form id="orderForm" class="space-y-3">
-          <input id="name" required placeholder="Customer Name (e.g. Chinedu)" class="w-full p-2.5 rounded bg-slate-800 border border-slate-700 text-sm" />
-          <input id="phone" required placeholder="WhatsApp Phone (e.g. 2348012345678)" class="w-full p-2.5 rounded bg-slate-800 border border-slate-700 text-sm" />
-          <input id="item" required placeholder="Item (e.g. 2x Sneakers)" class="w-full p-2.5 rounded bg-slate-800 border border-slate-700 text-sm" />
-          <input id="amount" type="number" required placeholder="Amount in NGN (e.g. 15000)" class="w-full p-2.5 rounded bg-slate-800 border border-slate-700 text-sm" />
-          <button type="submit" id="payBtn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold py-2.5 rounded transition">
-            Generate & Pay via Paystack
-          </button>
+          <div>
+            <input id="name" type="text" required placeholder="Customer Name (e.g. Chinedu)"
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <input id="phone" type="tel" required placeholder="WhatsApp Phone (e.g. 08012345678)"
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <input id="item" type="text" required placeholder="Item (e.g. 2x Sneakers)"
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <input id="amount" type="number" required min="100" placeholder="Amount in NGN (e.g. 15000)"
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button type="submit" data-mode="copy"
+              class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold py-2.5 px-3 rounded-lg text-sm transition cursor-pointer">
+              Copy Payment Link
+            </button>
+            <button type="submit" data-mode="pay"
+              class="bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold py-2.5 px-3 rounded-lg text-sm transition cursor-pointer">
+              Pay Here Now
+            </button>
+          </div>
         </form>
+
+        <!-- Copy confirmation + fallback box -->
+        <div id="copyBox" class="hidden mt-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+          <p class="text-xs text-emerald-400 font-medium mb-1.5">✓ Link copied! Paste in the customer's DM or WhatsApp:</p>
+          <input id="generatedUrl" type="text" readonly onclick="this.select()"
+            class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-300 select-all" />
+        </div>
       </div>
 
-      <!-- Live Merchant Dashboard -->
-      <div class="md:col-span-2 bg-slate-900 p-5 rounded-xl border border-slate-800 space-y-4">
-        <div class="flex justify-between items-center">
-          <h2 class="font-semibold text-lg">2. Live Merchant Order Log</h2>
-          <button onclick="loadOrders()" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded">Refresh</button>
+      <!-- Right: Live Merchant Order Log -->
+      <div class="md:col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold">2. Live Merchant Order Log</h2>
+          <button onclick="loadOrders()"
+            class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg transition cursor-pointer">
+            Refresh
+          </button>
         </div>
+
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm">
-            <thead class="text-slate-400 border-b border-slate-800">
-              <tr>
-                <th class="py-2">Customer</th>
-                <th class="py-2">Item</th>
-                <th class="py-2">Amount</th>
-                <th class="py-2">Status</th>
-                <th class="py-2">Action</th>
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400 text-xs">
+                <th class="pb-2.5 font-medium">Customer</th>
+                <th class="pb-2.5 font-medium">Item</th>
+                <th class="pb-2.5 font-medium">Amount</th>
+                <th class="pb-2.5 font-medium">Status</th>
+                <th class="pb-2.5 font-medium">Action</th>
               </tr>
             </thead>
-            <tbody id="ordersTable" class="divide-y divide-slate-800"></tbody>
+            <tbody id="ordersTable" class="divide-y divide-slate-800/70">
+              <tr>
+                <td colspan="5" class="py-6 text-center text-slate-500 text-xs">Loading orders...</td>
+              </tr>
+            </tbody>
           </table>
         </div>
       </div>
@@ -65,53 +100,86 @@
     }
 
     async function loadOrders() {
-      const res = await fetch('/api/orders');
-      const orders = await res.json();
-      const tbody = document.getElementById('ordersTable');
-      tbody.innerHTML = orders.map(o => {
-        const msg = encodeURIComponent(`Hello ${o.customer_name}, payment of NGN ${o.amount_naira.toLocaleString()} for ${o.item_name} (Ref: ${o.reference}) is CONFIRMED! Thank you for your patronage.`);
-        const badge = o.status === 'PAID'
-          ? '<span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-400">PAID</span>'
-          : '<span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/20 text-amber-400">PENDING</span>';
-        return `
-          <tr>
-            <td class="py-2.5">${o.customer_name}<div class="text-xs text-slate-500">${o.reference}</div></td>
-            <td class="py-2.5">${o.item_name}</td>
-            <td class="py-2.5">₦${Number(o.amount_naira).toLocaleString()}</td>
-            <td class="py-2.5">${badge}</td>
-            <td class="py-2.5">
-              <a href="https://wa.me/${formatNgPhone(o.customer_phone)}?text=${msg}" target="_blank" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded inline-block">
-                Send WhatsApp Receipt
-              </a>
-            </td>
-          </tr>
-        `;
-      }).join('');
+      try {
+        const res = await fetch('/api/orders');
+        const orders = await res.json();
+        const tbody = document.getElementById('ordersTable');
+        if (!orders.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-500 text-xs">No orders yet. Create one on the left.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = orders.map(o => {
+          const msg = encodeURIComponent(`Hello ${o.customer_name}, payment of NGN ${Number(o.amount_naira).toLocaleString()} for ${o.item_name} (Ref: ${o.reference}) is CONFIRMED! Thank you for your patronage.`);
+          const badge = o.status === 'PAID'
+            ? '<span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-400">PAID</span>'
+            : '<span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/20 text-amber-400">PENDING</span>';
+          return `
+            <tr>
+              <td class="py-2.5 pr-2">
+                <div class="font-medium">${o.customer_name}</div>
+                <div class="text-xs text-slate-500">${o.reference}</div>
+              </td>
+              <td class="py-2.5 pr-2">${o.item_name}</td>
+              <td class="py-2.5 pr-2">₦${Number(o.amount_naira).toLocaleString()}</td>
+              <td class="py-2.5 pr-2">${badge}</td>
+              <td class="py-2.5">
+                <a href="https://wa.me/${formatNgPhone(o.customer_phone)}?text=${msg}" target="_blank"
+                  class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded inline-block whitespace-nowrap">
+                  Send WhatsApp Receipt
+                </a>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Failed to load orders:', err);
+      }
     }
 
     document.getElementById('orderForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const btn = document.getElementById('payBtn');
-      btn.textContent = 'Redirecting to Paystack...';
-      btn.disabled = true;
+      const mode = e.submitter?.dataset?.mode || 'copy';
+      const copyBox = document.getElementById('copyBox');
+      const urlInput = document.getElementById('generatedUrl');
+      const buttons = e.target.querySelectorAll('button[type="submit"]');
 
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_name: document.getElementById('name').value,
-          customer_phone: document.getElementById('phone').value,
-          item_name: document.getElementById('item').value,
-          amount_naira: document.getElementById('amount').value
-        })
-      });
-      const data = await res.json();
-      if (data.authorization_url) {
-        window.location.href = data.authorization_url;
-      } else {
-        alert(data.error || 'Error initializing Paystack');
-        btn.textContent = 'Generate & Pay via Paystack';
-        btn.disabled = false;
+      copyBox.classList.add('hidden');
+      buttons.forEach(b => b.disabled = true);
+
+      try {
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customer_name: document.getElementById('name').value,
+            customer_phone: document.getElementById('phone').value,
+            item_name: document.getElementById('item').value,
+            amount_naira: document.getElementById('amount').value
+          })
+        });
+        const data = await res.json();
+
+        if (data.authorization_url) {
+          await loadOrders();
+          if (mode === 'copy') {
+            urlInput.value = data.authorization_url;
+            copyBox.classList.remove('hidden');
+            try {
+              await navigator.clipboard.writeText(data.authorization_url);
+            } catch (_) {
+              urlInput.select();
+            }
+            e.target.reset();
+          } else {
+            window.location.href = data.authorization_url;
+          }
+        } else {
+          alert(data.error || 'Error initializing Paystack');
+        }
+      } catch (err) {
+        alert('Network error creating order. Please try again.');
+      } finally {
+        buttons.forEach(b => b.disabled = false);
       }
     });
 
