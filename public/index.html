@@ -53,6 +53,17 @@
   </div>
 
   <script>
+    function formatNgPhone(raw) {
+      let digits = String(raw || '').replace(/\D/g, '');
+      if (digits.startsWith('0') && digits.length === 11) {
+        return '234' + digits.slice(1);
+      }
+      if (digits.length === 10 && /^[789]/.test(digits)) {
+        return '234' + digits;
+      }
+      return digits;
+    }
+
     async function loadOrders() {
       const res = await fetch('/api/orders');
       const orders = await res.json();
@@ -69,7 +80,7 @@
             <td class="py-2.5">₦${Number(o.amount_naira).toLocaleString()}</td>
             <td class="py-2.5">${badge}</td>
             <td class="py-2.5">
-              <a href="https://wa.me/${o.customer_phone}?text=${msg}" target="_blank" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded inline-block">
+              <a href="https://wa.me/${formatNgPhone(o.customer_phone)}?text=${msg}" target="_blank" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded inline-block">
                 Send WhatsApp Receipt
               </a>
             </td>
