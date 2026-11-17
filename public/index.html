@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paystack Automated Order & Receipt Demo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-6">
+  <div class="max-w-5xl mx-auto space-y-8">
+    <div class="border-b border-slate-800 pb-4">
+      <h1 class="text-2xl font-bold text-emerald-400">Automated Paystack Order & Receipt System</h1>
+      <p class="text-sm text-slate-400">Live Webhook Verification + Instant WhatsApp Receipt Dispatch</p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      <!-- New Order Checkout Simulator -->
+      <div class="bg-slate-900 p-5 rounded-xl border border-slate-800 space-y-4">
+        <h2 class="font-semibold text-lg">1. Customer Checkout Link</h2>
+        <form id="orderForm" class="space-y-3">
+          <input id="name" required placeholder="Customer Name (e.g. Chinedu)" class="w-full p-2.5 rounded bg-slate-800 border border-slate-700 text-sm" />
+          <input id="phone" required placeholder="WhatsApp Phone (e.g. 2348012345678)" class="w-full p-2.5 rounded bg-slate-800 border border-slate-700 text-sm" />
+          <input id="item" required placeholder="Item (e.g. 2x Sneakers)" class="w-full p-2.5 rounded bg-slate-800 border border-slate-700 text-sm" />
+          <input id="amount" type="number" required placeholder="Amount in NGN (e.g. 15000)" class="w-full p-2.5 rounded bg-slate-800 border border-slate-700 text-sm" />
+          <button type="submit" id="payBtn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold py-2.5 rounded transition">
+            Generate & Pay via Paystack
+          </button>
+        </form>
+      </div>
+
+      <!-- Live Merchant Dashboard -->
+      <div class="md:col-span-2 bg-slate-900 p-5 rounded-xl border border-slate-800 space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="font-semibold text-lg">2. Live Merchant Order Log</h2>
+          <button onclick="loadOrders()" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded">Refresh</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="py-2">Customer</th>
+                <th class="py-2">Item</th>
+                <th class="py-2">Amount</th>
+                <th class="py-2">Status</th>
+                <th class="py-2">Action</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTable" class="divide-y divide-slate-800"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadOrders() {
+      const res = await fetch('/api/orders');
+      const orders = await res.json();
+      const tbody = document.getElementById('ordersTable');
+      tbody.innerHTML = orders.map(o => {
+        const msg = encodeURIComponent(`Hello ${o.customer_name}, payment of NGN ${o.amount_naira.toLocaleString()} for ${o.item_name} (Ref: ${o.reference}) is CONFIRMED! Thank you for your patronage.`);
+        const badge = o.status === 'PAID'
+          ? '<span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-400">PAID</span>'
+          : '<span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/20 text-amber-400">PENDING</span>';
+        return `
+          <tr>
+            <td class="py-2.5">${o.customer_name}<div class="text-xs text-slate-500">${o.reference}</div></td>
+            <td class="py-2.5">${o.item_name}</td>
+            <td class="py-2.5">₦${Number(o.amount_naira).toLocaleString()}</td>
+            <td class="py-2.5">${badge}</td>
+            <td class="py-2.5">
+              <a href="https://wa.me/${o.customer_phone}?text=${msg}" target="_blank" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded inline-block">
+                Send WhatsApp Receipt
+              </a>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('orderForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('payBtn');
+      btn.textContent = 'Redirecting to Paystack...';
+      btn.disabled = true;
+
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_name: document.getElementById('name').value,
+          customer_phone: document.getElementById('phone').value,
+          item_name: document.getElementById('item').value,
+          amount_naira: document.getElementById('amount').value
+        })
+      });
+      const data = await res.json();
+      if (data.authorization_url) {
+        window.location.href = data.authorization_url;
+      } else {
+        alert(data.error || 'Error initializing Paystack');
+        btn.textContent = 'Generate & Pay via Paystack';
+        btn.disabled = false;
+      }
+    });
+
+    loadOrders();
+    setInterval(loadOrders, 4000);
+  </script>
+</body>
+</html>
