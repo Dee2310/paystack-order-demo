@@ -7,7 +7,24 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8">
-  <div class="max-w-5xl mx-auto">
+
+  <!-- CUSTOMER RECEIPT VIEW (Shown only when customer finishes paying via Paystack redirect) -->
+  <div id="customerSuccessView" class="hidden max-w-md mx-auto mt-12 bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center shadow-xl">
+    <div class="w-14 h-14 mx-auto mb-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl font-bold">
+      ✓
+    </div>
+    <h1 class="text-xl font-bold text-slate-100">Payment Received!</h1>
+    <p class="text-slate-400 text-sm mt-2">
+      Thank you! Your payment has been confirmed and the merchant has been notified automatically.
+    </p>
+    <div class="mt-4 bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-400">
+      Order Reference: <span id="customerRef" class="text-emerald-400 font-mono font-semibold"></span>
+    </div>
+    <p class="text-xs text-slate-500 mt-4">You will receive your official receipt on WhatsApp shortly. You may now close this page.</p>
+  </div>
+
+  <!-- VENDOR ADMIN DASHBOARD (Hidden from customers after checkout) -->
+  <div id="vendorDashboard" class="max-w-5xl mx-auto">
     <header class="mb-8 border-b border-slate-800 pb-4">
       <h1 class="text-2xl md:text-3xl font-bold text-emerald-400">Automated Paystack Order & Receipt System</h1>
       <p class="text-slate-400 text-sm mt-1">Live Webhook Verification + Instant WhatsApp Receipt Dispatch</p>
@@ -88,6 +105,18 @@
   </div>
 
   <script>
+    // Check if this page load is a customer returning from Paystack checkout
+    const params = new URLSearchParams(window.location.search);
+    const paidRef = params.get('reference') || params.get('trxref');
+
+    if (paidRef) {
+      document.getElementById('vendorDashboard').classList.add('hidden');
+      document.getElementById('customerSuccessView').classList.remove('hidden');
+      document.getElementById('customerRef').textContent = paidRef;
+    } else {
+      startVendorDashboard();
+    }
+
     function formatNgPhone(raw) {
       let digits = String(raw || '').replace(/\D/g, '');
       if (digits.startsWith('0') && digits.length === 11) {
@@ -136,55 +165,57 @@
       }
     }
 
-    document.getElementById('orderForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const mode = e.submitter?.dataset?.mode || 'copy';
-      const copyBox = document.getElementById('copyBox');
-      const urlInput = document.getElementById('generatedUrl');
-      const buttons = e.target.querySelectorAll('button[type="submit"]');
+    function startVendorDashboard() {
+      document.getElementById('orderForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const mode = e.submitter?.dataset?.mode || 'copy';
+        const copyBox = document.getElementById('copyBox');
+        const urlInput = document.getElementById('generatedUrl');
+        const buttons = e.target.querySelectorAll('button[type="submit"]');
 
-      copyBox.classList.add('hidden');
-      buttons.forEach(b => b.disabled = true);
+        copyBox.classList.add('hidden');
+        buttons.forEach(b => b.disabled = true);
 
-      try {
-        const res = await fetch('/api/orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            customer_name: document.getElementById('name').value,
-            customer_phone: document.getElementById('phone').value,
-            item_name: document.getElementById('item').value,
-            amount_naira: document.getElementById('amount').value
-          })
-        });
-        const data = await res.json();
+        try {
+          const res = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customer_name: document.getElementById('name').value,
+              customer_phone: document.getElementById('phone').value,
+              item_name: document.getElementById('item').value,
+              amount_naira: document.getElementById('amount').value
+            })
+          });
+          const data = await res.json();
 
-        if (data.authorization_url) {
-          await loadOrders();
-          if (mode === 'copy') {
-            urlInput.value = data.authorization_url;
-            copyBox.classList.remove('hidden');
-            try {
-              await navigator.clipboard.writeText(data.authorization_url);
-            } catch (_) {
-              urlInput.select();
+          if (data.authorization_url) {
+            await loadOrders();
+            if (mode === 'copy') {
+              urlInput.value = data.authorization_url;
+              copyBox.classList.remove('hidden');
+              try {
+                await navigator.clipboard.writeText(data.authorization_url);
+              } catch (_) {
+                urlInput.select();
+              }
+              e.target.reset();
+            } else {
+              window.location.href = data.authorization_url;
             }
-            e.target.reset();
           } else {
-            window.location.href = data.authorization_url;
+            alert(data.error || 'Error initializing Paystack');
           }
-        } else {
-          alert(data.error || 'Error initializing Paystack');
+        } catch (err) {
+          alert('Network error creating order. Please try again.');
+        } finally {
+          buttons.forEach(b => b.disabled = false);
         }
-      } catch (err) {
-        alert('Network error creating order. Please try again.');
-      } finally {
-        buttons.forEach(b => b.disabled = false);
-      }
-    });
+      });
 
-    loadOrders();
-    setInterval(loadOrders, 4000);
+      loadOrders();
+      setInterval(loadOrders, 4000);
+    }
   </script>
 </body>
 </html>
